@@ -2,6 +2,9 @@
 from __future__ import print_function, unicode_literals
 
 import time
+import traceback
+import os
+import sys
 
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
@@ -25,11 +28,11 @@ class userInterface(QWidget):
         self.center()
 
         self.imageButton = TopButton("图片墙")
-        self.openDir = TopButton("选择文件夹")
+        self.openButton = TopButton("选择文件夹")
         self.selectMod = TopButton("选择模型")
 
         self.layout = QGridLayout()
-        self.layout.addWidget(self.openDir, 1, 2, 1, 1)
+        self.layout.addWidget(self.openButton, 1, 2, 1, 1)
         self.layout.addWidget(self.selectMod, 1, 4, 1, 1)
         self.layout.addWidget(self.imageButton, 1, 6, 1, 1)
 
@@ -73,11 +76,24 @@ class userInterface(QWidget):
         # self.layout.setColumnStretch(0, 5)
         # self.layout.setColumnStretch(1, 1)
 
+        self.openButton.clicked.connect(self.openDir)
         self.imageButton.clicked.connect(self.loadImage)
         self.selectMod.clicked.connect(self.module)
 
         self.modFile = ''
         self.modType = False
+        self.fileList = []
+
+    def openDir(self):
+        getfileList, _ = QFileDialog.getOpenFileNames(self, 'Open file', './')
+        if not getfileList:
+            return
+        if len(getfileList) < 400:
+            QMessageBox.information(self, 'Warnning', '选择文件数量需大于等于400！')
+            return
+        self.fileList = getfileList
+        print(self.fileList)
+        print(len(self.fileList))
 
     def updateResult(self, pixmap, filename):
         self.selectImg.pixmap = pixmap
@@ -117,18 +133,20 @@ class userInterface(QWidget):
     #         self.downWidget.setLayout(self.downLayout)
 
     def loadImage(self):
+        if not self.fileList:
+            QMessageBox.information(self, 'Warnning', '请先导入照片！')
+            return
         if self.modFile == '':
-        # if self.modType == False:
             QMessageBox.information(self, 'Warnning', '请先导入模型！')
             return
         self.updateWidget()
         self.imgWallWidget.hideWidget()
-        self.imgWallWidget.update_image()
+        self.imgWallWidget.update_image(self.fileList)
+        print("self.fileList {}".format(self.fileList))
+        print(len(self.fileList))
 
     def module(self):
         getFile, _ = QFileDialog.getOpenFileName(self, 'Open file', './')
-        # print(getFile)
-
         if getFile == '':
             return
         else:
@@ -147,8 +165,44 @@ class userInterface(QWidget):
                 print(self.modType)
                 return
 
-            print(self.modType)
+            # print(self.modType)
 
+    def excepthook(excType, excValue, tracebackobj):
+        """
+        Global function to catch unhandled exceptions.
+        @param excType exception type
+        @param excValue exception value
+        @param tracebackobj traceback object
+        """
+        separator = '-' * 80
+        logFile = os.path.join("simple.log")
+        notice = \
+            """An unhandled exception occurred. Please report the problem\n"""\
+            """using the error reporting dialog or via email to <%s>.\n"""\
+            """A log has been written to "%s".\n\nError information:\n""" % \
+            ("yourmail at server.com", logFile)
+        versionInfo = "0.0.1"
+        timeString = time.strftime("%Y-%m-%d, %H:%M:%S")
+
+        tbinfofile = StringIO()
+        traceback.print_tb(tracebackobj, None, tbinfofile)
+        tbinfofile.seek(0)
+        tbinfo = tbinfofile.read()
+        errmsg = '%s: \n%s' % (str(excType), str(excValue))
+        sections = [separator, timeString, separator, errmsg, separator, tbinfo]
+        msg = '\n'.join(sections)
+        try:
+            with open(logFile, "w") as f:
+                f.write(msg)
+                f.write(versionInfo)
+        except IOError:
+            pass
+        errorbox = QMessageBox()
+        errorbox.setText(str(notice)+str(msg)+str(versionInfo))
+        errorbox.setWindowTitle(' An Unhandled Exception Occurred')
+        errorbox.exec_()
+
+    sys.excepthook = excepthook
 
 if __name__ == '__main__':
     import sys

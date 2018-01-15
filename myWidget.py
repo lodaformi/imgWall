@@ -2,6 +2,8 @@
 from __future__ import print_function, unicode_literals
 import os
 import time
+import random
+from copy import deepcopy
 
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
@@ -122,16 +124,20 @@ class imgWall(QWidget):
                 if isinstance(item, QWidgetItem):
                     item.widget().hide()
 
-    def update_image(self):
-        tempList = self.imagelist.selectImg()
-        print(tempList)
-        # print(self.top_layout.count())
-        for i in range(len(tempList)):
-            self.img = tempList[i]
+    def update_image(self, fileList):
+        copyList = deepcopy(fileList)
+        showlist = []
+
+        for i in range(400):
+            index = random.randint(0, (len(copyList)-1))
+            img_name = copyList.pop(index)
+            showlist.append(img_name)
+
+        for i in range(len(showlist)):
             widget = self.top_layout.itemAt(i).widget()
             if isinstance(widget, ImgWidget):
-                widget.pixmap = QPixmap(tempList[i])
-                widget.getfileName(tempList[i])
+                widget.pixmap = QPixmap(showlist[i])
+                widget.getfileName(showlist[i])
                 widget.updatePixmap()
                 widget.setVisible(True)
 
@@ -151,9 +157,8 @@ class MyThread(QThread):
         print(self.modfile)
         self.start_trigger.emit()
         startTime = time.time()
-
+        #Using program replace sleep
         time.sleep(1)
-
         totalTime = time.time() - startTime
         # resultFile = open('/home/pdl/display/labels.txt')
         # aList = resultFile.read().split()
@@ -171,147 +176,6 @@ class MyThread(QThread):
         result_str += "\nTop1 类型:{} 概率:{}".format('plane', 4.3)
 
         self.end_trigger.emit("total time: {:.2f}s".format(totalTime) + '\n' + result_str)
-
-
-class ImageRecogWidget(QWidget):
-    def __init__(self,parent=None):
-        super(ImageRecogWidget, self).__init__(parent)
-        self.font = QFont("楷体", 14, QFont.Bold)
-
-        inputLabel = QLabel("照片导入")
-        inputLabel.setFont(self.font)
-
-        openSiteLabel = QLabel("打开位置")
-        openSiteLabel.setFont(self.font)
-
-        self.openSite = QLineEdit()
-
-        openButton = QPushButton()
-        openButton.setIcon(QIcon(QPixmap("img/folder0.jpg")))
-
-        searchButton = QPushButton("查询")
-        searchButton.setIcon(QIcon("img/query.jpg"))
-
-        objectLabel = QLabel("物体识别")
-        objectLabel.setFont(self.font)
-
-        self.resultLabel = QLabel()
-        self.resultLabel.setFont(QFont("Roman times", 16))
-        self.infoLabel = QLabel()
-        self.infoLabel.setFont(QFont("Roman times", 16))
-        self.infoWiget = QWidget()
-        self.infoWigLayout = QGridLayout()
-        self.infoWiget.setLayout(self.infoWigLayout)
-        self.infoWigLayout.addWidget(self.infoLabel,0,0)
-        self.infoWigLayout.addWidget(self.resultLabel,1,0)
-
-
-        imageLayout = QGridLayout()
-        imageLayout.addWidget(inputLabel,0,0,1,4,Qt.AlignCenter)
-        imageLayout.addWidget(openSiteLabel,1,0)
-        imageLayout.addWidget(self.openSite,1,1)
-        imageLayout.addWidget(openButton,1,2)
-        imageLayout.addWidget(searchButton,1,3)
-
-        self.downLayout = QGridLayout()
-        self.downLayout.setSpacing(20)
-
-        self.downLayout.addLayout(imageLayout,0,0)
-
-        self.downLayout.addWidget(objectLabel,0,1, Qt.AlignCenter)
-        self.downLayout.addWidget(self.infoWiget,1,1, Qt.AlignCenter)
-        self.downLayout.setRowStretch(0, 1)
-        self.downLayout.setRowStretch(1, 8)
-        self.downLayout.setColumnStretch(0, 3)
-        self.downLayout.setColumnStretch(1, 1)
-
-        self.setLayout(self.downLayout)
-
-        self.picWidget = QWidget()
-        self.picLayout = QHBoxLayout()
-        self.picWidget.setLayout(self.picLayout)
-        self.downLayout.addWidget(self.picWidget,1,0)
-
-        openButton.clicked.connect(self.openPicture)
-        searchButton.clicked.connect(self.search)
-
-    def updateText(self, text):
-        print('update text：{}'.format(text))
-        self.infoLabel.setText(text)
-
-    def cleanPic(self):
-        if self.picWidget.layout():
-            layout = self.picWidget.layout()
-            # print(layout.count())
-            for i in reversed(range(layout.count())):
-                item = layout.itemAt(i)
-                if isinstance(item, QWidgetItem):
-                    item.widget().close()
-                layout.removeItem(item)
-
-            QWidget().setLayout(self.picWidget.layout())
-            self.picLayout = QHBoxLayout()
-            self.picWidget.setLayout(self.picLayout)
-
-    def openPicture(self):
-        self.filename = QFileDialog.getOpenFileName(self, 'Open file', './')
-        if self.filename[0]:
-            self.openSite.setText(self.filename[0])
-            self.cleanPic()
-            self.cameraWidget = ImgWidget(400, 300)
-            self.cameraWidget.pixmap = QPixmap(self.filename[0])
-            self.cameraWidget.updatePixmap()
-            # self.cameraWidget = VideoWidget(self.filename[0],400, 300)
-            self.picLayout.addWidget(self.cameraWidget)
-            self.picWidget.show()
-        # # self.repaint()
-        # print(self.updatesEnabled())
-        # time.sleep(1)
-        # print('update')
-        # time.sleep(5)
-        # print('done')
-
-    def search(self):
-        files = self.filename[0]
-        thread = MyThread(files, self)
-        thread.start_trigger.connect(self.updateText)
-        thread.end_trigger.connect(self.updateText)
-        thread.start()
-
-
-# class MyThread2(QThread):
-#     start_trigger = pyqtSignal(str)
-#     end_trigger = pyqtSignal(str)
-#
-#     def __init__(self, files, parent=None):
-#         super(MyThread2, self).__init__(parent)
-#         self.file = files
-#
-#     def run(self):
-#         print('sleep ..')
-#         self.start_trigger.emit('start ...')
-#         startTime = time.time()
-#         find_img(self.file)
-#         os.system('rm -fr {}/diary'.format(file_path))
-#         os.system('cd {} && matlab -nodesktop -nosplash -nojvm -r "testPascalVocPic;quit;"'.format(file_path))
-#         os.system('grep -A20 Elapsed {}/diary | tail -n +2 > {}/result.txt'.format(file_path,file_path))
-#         totalTime = time.time() - startTime
-#
-#         resultFile = open('{}/result.txt'.format(file_path),'r')
-#         string_result = ""
-#         for line in resultFile:
-#             list = line.split()
-#             obj = list[0]
-#             score = list[1]
-#             # print(score)
-#             if float(score) > 0:
-#                 string_result = string_result + '\n' + obj
-#         resultFile.close()
-#
-#         self.end_trigger.emit('end...')
-#         time.sleep(0.5)
-#         # self.end_trigger.emit(string_result)
-#         self.end_trigger.emit( string_result + '\n\n' + "total time: {:.2f}s".format(totalTime))
 
 class PageButton(QPushButton):
     def __init__(self, *args, **kwargs):

@@ -4,7 +4,7 @@ class imgList():
     def __init__(self):
         self.img_names = []
 
-        filename=open('allfilename.txt','r')
+        filename=open('allfilename.txt', 'r')
 
         for line in filename.readlines():
             temp_name = line.strip('\n')
